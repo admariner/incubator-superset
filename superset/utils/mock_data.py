@@ -29,6 +29,7 @@ import sqlalchemy.sql.sqltypes
 import sqlalchemy_utils
 from flask_appbuilder import Model
 from sqlalchemy import Column, inspect, MetaData, Table
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy.sql.visitors import VisitableType
@@ -68,6 +69,9 @@ days_range = (MAXIMUM_DATE - MINIMUM_DATE).days
 
 # pylint: disable=too-many-return-statements, too-many-branches
 def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
+    if isinstance(sqltype, sqlalchemy.dialects.mysql.types.TINYINT):
+        return lambda: random.choice([0, 1])
+
     if isinstance(
         sqltype, (sqlalchemy.sql.sqltypes.INTEGER, sqlalchemy.sql.sqltypes.Integer)
     ):
@@ -82,7 +86,7 @@ def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
         length = random.randrange(sqltype.length or 255)
         length = max(8, length)  # for unique values
         length = min(100, length)  # for FAB perms
-        return lambda: "".join(random.choices(string.printable, k=length))
+        return lambda: "".join(random.choices(string.ascii_letters, k=length))
 
     if isinstance(
         sqltype, (sqlalchemy.sql.sqltypes.TEXT, sqlalchemy.sql.sqltypes.Text)
@@ -90,7 +94,7 @@ def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
         length = random.randrange(65535)
         # "practicality beats purity"
         length = max(length, 2048)
-        return lambda: "".join(random.choices(string.printable, k=length))
+        return lambda: "".join(random.choices(string.ascii_letters, k=length))
 
     if isinstance(
         sqltype, (sqlalchemy.sql.sqltypes.BOOLEAN, sqlalchemy.sql.sqltypes.Boolean)
@@ -129,7 +133,7 @@ def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
 
     if isinstance(sqltype, sqlalchemy.sql.sqltypes.JSON):
         return lambda: {
-            "".join(random.choices(string.printable, k=8)): random.randrange(65535)
+            "".join(random.choices(string.ascii_letters, k=8)): random.randrange(65535)
             for _ in range(10)
         }
 
@@ -146,6 +150,9 @@ def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
     if isinstance(sqltype, sqlalchemy_utils.types.uuid.UUIDType):
         return uuid4
 
+    if isinstance(sqltype, postgresql.base.UUID):
+        return lambda: str(uuid4())
+
     if isinstance(sqltype, sqlalchemy.sql.sqltypes.BLOB):
         length = random.randrange(sqltype.length or 255)
         return lambda: os.urandom(length)
@@ -153,7 +160,7 @@ def get_type_generator(sqltype: sqlalchemy.sql.sqltypes) -> Callable[[], Any]:
     logger.warning(
         "Unknown type %s. Please add it to `get_type_generator`.", type(sqltype)
     )
-    return lambda: "UNKNOWN TYPE"
+    return lambda: b"UNKNOWN TYPE"
 
 
 def add_data(

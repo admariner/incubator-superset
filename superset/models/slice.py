@@ -35,6 +35,7 @@ from superset.models.tags import ChartUpdater
 from superset.tasks.thumbnails import cache_chart_thumbnail
 from superset.utils import core as utils
 from superset.utils.hashing import md5_sha_from_str
+from superset.utils.memoized import memoized
 from superset.utils.urls import get_url_path
 from superset.viz import BaseViz, viz_types  # type: ignore
 
@@ -100,7 +101,7 @@ class Slice(
         return ConnectorRegistry.sources[self.datasource_type]
 
     @property
-    def datasource(self) -> "BaseDatasource":
+    def datasource(self) -> Optional["BaseDatasource"]:
         return self.get_datasource
 
     def clone(self) -> "Slice":
@@ -117,7 +118,7 @@ class Slice(
 
     # pylint: disable=using-constant-test
     @datasource.getter  # type: ignore
-    @utils.memoized
+    @memoized
     def get_datasource(self) -> Optional["BaseDatasource"]:
         return db.session.query(self.cls_model).filter_by(id=self.datasource_id).first()
 
@@ -156,12 +157,13 @@ class Slice(
     # pylint: enable=using-constant-test
 
     @property  # type: ignore
-    @utils.memoized
+    @memoized
     def viz(self) -> Optional[BaseViz]:
         form_data = json.loads(self.params)
         viz_class = viz_types.get(self.viz_type)
-        if viz_class:
-            return viz_class(datasource=self.datasource, form_data=form_data)
+        datasource = self.datasource
+        if viz_class and datasource:
+            return viz_class(datasource=datasource, form_data=form_data)
         return None
 
     @property

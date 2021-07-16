@@ -50,10 +50,11 @@ const {
 } = parsedArgs;
 const isDevMode = mode !== 'production';
 const isDevServer = process.argv[1].includes('webpack-dev-server');
+const ASSET_BASE_URL = process.env.ASSET_BASE_URL || '';
 
 const output = {
   path: BUILD_DIR,
-  publicPath: '/static/assets/', // necessary for lazy-loaded chunks
+  publicPath: `${ASSET_BASE_URL}/static/assets/`,
 };
 if (isDevMode) {
   output.filename = '[name].[hash:8].entry.js';
@@ -145,6 +146,7 @@ if (!process.env.CI) {
 if (!isDevServer) {
   plugins.push(
     new CleanWebpackPlugin({
+      dry: false,
       // required because the build directory is outside the frontend directory:
       dangerouslyAllowCleanPatternsOutsideProject: true,
     }),
@@ -202,14 +204,13 @@ const config = {
     fs: 'empty',
   },
   entry: {
-    theme: path.join(APP_DIR, '/src/theme.ts'),
     preamble: PREAMBLE,
+    theme: path.join(APP_DIR, '/src/theme.ts'),
+    menu: addPreamble('src/views/menu.tsx'),
+    spa: addPreamble('/src/views/index.tsx'),
     addSlice: addPreamble('/src/addSlice/index.tsx'),
     explore: addPreamble('/src/explore/index.jsx'),
-    dashboard: addPreamble('/src/dashboard/index.jsx'),
     sqllab: addPreamble('/src/SqlLab/index.tsx'),
-    crudViews: addPreamble('/src/views/index.tsx'),
-    menu: addPreamble('src/views/menu.tsx'),
     profile: addPreamble('/src/profile/index.tsx'),
     showSavedQuery: [path.join(APP_DIR, '/src/showSavedQuery/index.jsx')],
   },
@@ -259,7 +260,6 @@ const config = {
               'antd',
               '@ant-design.*',
               '.*bootstrap',
-              'react-bootstrap-slider',
               'moment',
               'jquery',
               'core-js.*',
@@ -279,7 +279,7 @@ const config = {
         // viz thumbnails are used in `addSlice` and `explore` page
         thumbnail: {
           name: 'thumbnail',
-          test: /thumbnail(Large)?\.png/i,
+          test: /thumbnail(Large)?\.(png|jpg)/i,
           priority: 20,
           enforce: true,
         },
@@ -292,9 +292,6 @@ const config = {
       'react-dom': '@hot-loader/react-dom',
       // Force using absolute import path of some packages in the root node_modules,
       // as they can be dependencies of other packages via `npm link`.
-      // Both `@emotion/core` and `@superset-ui/core` remember some globals within
-      // module after imported, which will not be available everywhere if two
-      // different copies of the same module are imported in different places.
       '@superset-ui/core': path.resolve(
         APP_DIR,
         './node_modules/@superset-ui/core',
