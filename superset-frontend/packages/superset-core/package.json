@@ -111,7 +111,7 @@
     "@types/react-loadable": "*",
     "@types/react-window": "^1.8.8",
     "@types/tinycolor2": "*",
-    "typescript": "^5.0.0"
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "@emotion/cache": "^11.4.0",
